@@ -1,0 +1,30 @@
+[project]
+name = "grabit"
+version = "0.1.0"
+description = "Paste one link, get the file. A friendly wrapper around yt-dlp."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "JiaDing-AlphaTech" }]
+keywords = ["yt-dlp", "download", "video", "audio", "cli"]
+dependencies = [
+    "yt-dlp>=2025.1.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/JiaDing-AlphaTech/grabit"
+Issues = "https://github.com/JiaDing-AlphaTech/grabit/issues"
+
+[project.scripts]
+grab = "grabit.cli:main"
+grab-web = "grabit.web:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
