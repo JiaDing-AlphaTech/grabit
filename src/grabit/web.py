@@ -7,6 +7,7 @@ Runs entirely on 127.0.0.1 and only uses the Python standard library, so
 from __future__ import annotations
 
 import json
+import sys
 import threading
 import uuid
 import webbrowser
@@ -58,7 +59,7 @@ document.getElementById('f').onsubmit = async (e) => {
   const timer = setInterval(async () => {
     const s = await (await fetch('/api/status/' + id)).json();
     const pct = s.percent == null ? '' : s.percent.toFixed(1) + '% ';
-    log.innerHTML = s.status === 'done'
+    log.textContent = s.status === 'done'
       ? 'saved: ' + s.files.map(f => f.path).join('\\n')
       : pct + (s.detail || '');
     if (s.status === 'done' || s.status === 'error') clearInterval(timer);
@@ -67,8 +68,20 @@ document.getElementById('f').onsubmit = async (e) => {
 </script>
 """
 
+MAX_BODY = 16 * 1024
+LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
+
+
+def _hostname(value: str) -> str:
+    """Host name from a Host header or an Origin URL, without the port."""
+    if "//" in value:
+        return (urlparse(value).hostname or "").lower()
+    if value.startswith("["):
+        return value[1:].split("]", 1)[0].lower()
+    return value.rsplit(":", 1)[0].lower() if value.count(":") == 1 else value.lower()
 
 
 def _set(job_id: str, **fields) -> None:
@@ -78,19 +91,33 @@ def _set(job_id: str, **fields) -> None:
 
 class Handler(BaseHTTPRequestHandler):
     output_dir: Path
+    allowed_hosts: set[str] = set(LOOPBACK)
 
     def log_message(self, fmt: str, *args) -> None:  # keep the terminal quiet
         return
+
+    def _trusted(self) -> bool:
+        """Reject DNS rebinding (bad Host) and cross-site requests (bad Origin)."""
+        if _hostname(self.headers.get("host", "")) not in self.allowed_hosts:
+            return False
+        origin = self.headers.get("origin")
+        return origin is None or _hostname(origin) in self.allowed_hosts
 
     def _send(self, code: int, payload, content_type: str) -> None:
         body = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
         self.send_response(code)
         self.send_header("content-type", content_type)
         self.send_header("content-length", str(len(body)))
+        self.send_header("x-content-type-options", "nosniff")
+        self.send_header("x-frame-options", "DENY")
+        self.send_header("cache-control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self._trusted():
+            self._send(403, {"error": "forbidden"}, "application/json")
+            return
         path = urlparse(self.path).path
         if path == "/":
             self._send(200, PAGE.encode(), "text/html; charset=utf-8")
@@ -102,14 +129,30 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"}, "application/json")
 
     def do_POST(self) -> None:  # noqa: N802
+        if not self._trusted():
+            self._send(403, {"error": "forbidden"}, "application/json")
+            return
         if urlparse(self.path).path != "/api/download":
             self._send(404, {"error": "not found"}, "application/json")
             return
-        length = int(self.headers.get("content-length", 0))
+        # A JSON content type forces browsers to preflight cross-origin requests.
+        if self.headers.get_content_type() != "application/json":
+            self._send(415, {"error": "expected application/json"}, "application/json")
+            return
+        try:
+            length = int(self.headers.get("content-length", 0))
+        except ValueError:
+            length = -1
+        if not 0 <= length <= MAX_BODY:
+            self._send(413, {"error": "request too large"}, "application/json")
+            return
         try:
             data = json.loads(self.rfile.read(length) or b"{}")
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             self._send(400, {"error": "invalid JSON"}, "application/json")
+            return
+        if not isinstance(data, dict):
+            self._send(400, {"error": "expected a JSON object"}, "application/json")
             return
 
         job_id = uuid.uuid4().hex
@@ -129,11 +172,17 @@ def _run(job_id: str, data: dict) -> None:
         )
 
     try:
+        url = str(data.get("url", "")).strip()
+        if urlparse(url).scheme not in ("http", "https"):
+            raise GrabitError("only http(s) links are supported")
+        max_height = data.get("max_height") or None
+        if max_height is not None and not isinstance(max_height, int):
+            raise GrabitError("max_height must be a whole number")
         options = GrabOptions(
-            url=str(data.get("url", "")),
+            url=url,
             output_dir=Handler.output_dir,
             audio_only=bool(data.get("audio")),
-            max_height=data.get("max_height") or None,
+            max_height=max_height,
         )
         results = download(options, on_progress=on_progress)
     except GrabitError as exc:
@@ -150,6 +199,13 @@ def _run(job_id: str, data: dict) -> None:
 def serve(host: str = "127.0.0.1", port: int = 8787, output_dir: str = "~/Downloads",
           open_browser: bool = True) -> None:
     Handler.output_dir = Path(output_dir).expanduser()
+    Handler.allowed_hosts = set(LOOPBACK) | {host.lower()}
+    if host not in LOOPBACK:
+        print(
+            f"warning: listening on {host}. The web UI has no authentication; anyone "
+            "who can reach this address can make this machine download files.",
+            file=sys.stderr,
+        )
     server = ThreadingHTTPServer((host, port), Handler)
     url = f"http://{host}:{port}"
     print(f"grabit web UI at {url}  (saving to {Handler.output_dir}, Ctrl+C to stop)")

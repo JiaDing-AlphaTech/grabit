@@ -6,19 +6,34 @@ import argparse
 import sys
 from pathlib import Path
 
+from grabit import __version__
 from grabit.core import AUDIO_FORMATS, GrabOptions, GrabitError, download, probe
 
 
-def read_clipboard() -> str:
-    try:
-        import subprocess
+def _clipboard_commands() -> list[list[str]]:
+    if sys.platform == "darwin":
+        return [["pbpaste"]]
+    if sys.platform == "win32":
+        return [["powershell", "-NoProfile", "-Command", "Get-Clipboard"]]
+    return [
+        ["wl-paste", "--no-newline"],
+        ["xclip", "-selection", "clipboard", "-o"],
+        ["xsel", "--clipboard", "--output"],
+    ]
 
-        out = subprocess.run(
-            ["pbpaste"], capture_output=True, text=True, timeout=5, check=False
-        )
-        return out.stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        return ""
+
+def read_clipboard() -> str:
+    """Return the clipboard text, or "" if no clipboard tool is available."""
+    import subprocess
+
+    for cmd in _clipboard_commands():
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    return ""
 
 
 def human_size(num: int | None) -> str:
@@ -56,6 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--info", action="store_true", help="Show metadata, don't download.")
     parser.add_argument("--json", action="store_true", help="Print machine-readable output.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
 
 

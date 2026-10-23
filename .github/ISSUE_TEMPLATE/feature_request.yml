@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest a change that fits the one-link workflow.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: What would you like grabit to do?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Why does the current behavior fall short?
+    validations:
+      required: true

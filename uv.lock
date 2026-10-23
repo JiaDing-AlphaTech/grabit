@@ -24,8 +24,8 @@ wheels = [
 ]
 
 [[package]]
-name = "grabit"
-version = "0.1.0"
+name = "grabit-dl"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "yt-dlp" },

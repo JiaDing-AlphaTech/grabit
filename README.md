@@ -21,11 +21,17 @@ video with audio, [ffmpeg](https://ffmpeg.org/).
 brew install ffmpeg
 # Debian/Ubuntu
 sudo apt install ffmpeg
+# Windows
+winget install ffmpeg
 
-pip install grabit
+pip install grabit-dl
 ```
 
-Or run it straight from the repository:
+The package is published as `grabit-dl` because the `grabit` name on PyPI
+already belongs to an unrelated project. The commands it installs are still
+`grab` and `grab-web`.
+
+Or run it straight from the repository, without installing:
 
 ```bash
 uvx --from git+https://github.com/JiaDing-AlphaTech/grabit grab "<url>"
@@ -55,7 +61,9 @@ grab-web
 ```
 
 This opens `http://127.0.0.1:8787`. Nothing leaves your machine: the page is
-served locally and files are saved to `~/Downloads`.
+served locally and files are saved to `~/Downloads`. It only accepts requests
+from your own browser; see [SECURITY.md](SECURITY.md) before using `--host`
+to expose it.
 
 ## What it downloads
 
@@ -84,6 +92,25 @@ grabit is built on [yt-dlp](https://github.com/yt-dlp/yt-dlp), which is
 licensed under the Unlicense. All credit for site support belongs to the
 yt-dlp contributors.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changes are listed in
+[CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## 中文简介
+
+`grabit` 是 [yt-dlp](https://github.com/yt-dlp/yt-dlp) 的一个轻量封装：给一个链接，
+把画质最好的视频（或只要音频）下载到下载文件夹，省去 yt-dlp 的上百个参数。
+
+```bash
+pip install grabit-dl          # PyPI 上的包名，命令仍是 grab
+grab "<链接>"                  # 最佳画质，保存为 mp4
+grab "<链接>" -a               # 只保留音频，存为 mp3
+grab-web                       # 打开本地网页 http://127.0.0.1:8787 粘贴链接
+```
+
+下载内容时请遵守各网站的服务条款和版权要求，只下载你有权下载的内容。

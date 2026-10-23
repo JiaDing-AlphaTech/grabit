@@ -1,0 +1,29 @@
+name: Bug report
+description: Something does not work as documented.
+title: "bug: "
+labels: [bug]
+body:
+  - type: input
+    attributes:
+      label: grab version
+      description: Output of `grab --version`.
+      placeholder: grab 0.1.1
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What happened
+      description: Include the full error message and the command you ran. Name the site rather than pasting a private URL.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Operating system
+      options: [macOS, Linux, Windows, Other]
+    validations:
+      required: true

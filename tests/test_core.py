@@ -188,3 +188,42 @@ def test_parser_defaults():
     assert args.audio is False
     assert args.audio_format == "mp3"
     assert args.playlist is False
+
+
+def test_package_exports():
+    import grabit
+
+    assert grabit.download is download
+    assert grabit.GrabOptions is GrabOptions
+
+
+def test_clipboard_falls_back_between_tools(monkeypatch):
+    import subprocess
+
+    import grabit.cli as cli
+
+    monkeypatch.setattr(cli, "_clipboard_commands", lambda: [["missing-tool"], ["second"]])
+
+    def fake_run(cmd, **kwargs):
+        if cmd == ["missing-tool"]:
+            raise FileNotFoundError(cmd[0])
+        return subprocess.CompletedProcess(cmd, 0, stdout=" https://x \n", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert cli.read_clipboard() == "https://x"
+
+
+def test_clipboard_empty_when_no_tool(monkeypatch):
+    import grabit.cli as cli
+
+    monkeypatch.setattr(cli, "_clipboard_commands", lambda: [["definitely-not-a-real-tool-xyz"]])
+    assert cli.read_clipboard() == ""
+
+
+def test_version_flag(capsys):
+    import grabit
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    assert grabit.__version__ in capsys.readouterr().out
