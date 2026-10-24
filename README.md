@@ -1,5 +1,9 @@
 # grabit
 
+[![tests](https://github.com/JiaDing-AlphaTech/grabit/actions/workflows/tests.yml/badge.svg)](https://github.com/JiaDing-AlphaTech/grabit/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+
 Paste one link, get the file.
 
 `grabit` is a small, friendly wrapper around [yt-dlp](https://github.com/yt-dlp/yt-dlp).
