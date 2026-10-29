@@ -6,7 +6,7 @@ Changes that keep that focus are the most welcome.
 
 ## Development setup
 
-You need Python 3.10+ and [uv](https://docs.astral.sh/uv/).
+You need Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/JiaDing-AlphaTech/grabit

@@ -3,6 +3,15 @@
 All notable changes to grabit are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] - 2026-10-29
+
+### Changed
+
+- Requires Python 3.11 or newer. Python 3.10 reached end of life in October
+  2026, and current yt-dlp releases no longer support it.
+- Depends on yt-dlp 2026.10.26 or newer, so fresh installs get the latest
+  site fixes.
+
 ## [0.1.1] - 2026-10-23
 
 ### Added
