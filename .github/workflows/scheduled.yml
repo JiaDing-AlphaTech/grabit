@@ -1,0 +1,54 @@
+name: scheduled check
+
+on:
+  schedule:
+    - cron: "17 3 */2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  latest-yt-dlp:
+    name: Tests against latest yt-dlp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+        with:
+          python-version: "3.14"
+      - name: Compare yt-dlp versions
+        id: versions
+        run: |
+          locked=$(grep -A1 '^name = "yt-dlp"' uv.lock | sed -n 's/^version = "\(.*\)"/\1/p')
+          latest=$(curl -fsSL https://pypi.org/pypi/yt-dlp/json | python3 -c 'import json,sys; print(json.load(sys.stdin)["info"]["version"])')
+          echo "locked=$locked" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "yt-dlp locked: $locked, latest: $latest" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upgrade yt-dlp in the lockfile
+        run: uv lock --upgrade-package yt-dlp
+      - name: Run tests
+        run: uv run --group dev pytest -q
+
+  report:
+    name: Open an issue on failure
+    needs: latest-yt-dlp
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Scheduled check failed"
+          body="The scheduled test run against the latest yt-dlp failed: $RUN_URL"
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
